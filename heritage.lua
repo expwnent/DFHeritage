@@ -636,5 +636,5 @@ function computeHeritage()
 	printNameAges();
 end
 
-computeHeritage();
---dfhack.with_suspend(computeHeritage);
+--computeHeritage();
+dfhack.with_suspend(computeHeritage);
