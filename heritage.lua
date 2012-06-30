@@ -235,7 +235,7 @@ function computeHeritage()
 	local aliveNameHistogram = {};
 	local nameFounder = {};
 	local nameLeader = {};
-	function handleNewName(dwarf, storeNames)
+	function handleNewName(dwarf)
 		function newNameHelper(name)
 			if ( name == -1 ) then
 				do return end;
@@ -317,7 +317,7 @@ function computeHeritage()
 			--print("name duplicate: " .. name );
 			resolveConflict(dwarf);
 			--print("    new name: " .. dfhack.TranslateName(dwarf.name));
-			--handleNewName(dwarf, true);
+			--handleNewName(dwarf);
 			do return end;
 		end
 		
@@ -326,27 +326,11 @@ function computeHeritage()
 			--print("    1: " .. dwarf.name.words[0]);
 			--print("    2: " .. dwarf.name.words[1]);
 			resolveConflict(dwarf);
-			--handleNewName(dwarf, true);
+			--handleNewName(dwarf);
 			do return end;
 		end
 		
-		--local max = getMax(df.global.world.raws.language.words);
-		if ( requireUnique == true ) then
-			dfhack.error("duuuuh?");
-			for i=0,1 do
-				local nameI = dwarf.name.words[i];
-				if ( nameAge[nameI] ~= nil ) then
-					if ( i == 0 ) then
-						dwarf.name.words[0] = dwarf.name.words[1];
-						dwarf.name.words[1] = nameI;
-					end
-					resolveConflict(dwarf); --------------------give it requireUnique again
-					--handleNewName(dwarf, true);
-					do return end;
-				end
-			end
-		end
-		--handleNewName(dwarf, true);
+		--handleNewName(dwarf);
 		--sortName(dwarf); --just in case
 	end
 	
@@ -395,6 +379,7 @@ function computeHeritage()
 		
 		local oldName0 = dwarf.name.words[0];
 		local oldName1 = dwarf.name.words[1];
+		local oldNameString = dfhack.TranslateName(dwarf.name);
 		
 		if ( oldName0 == -1 or oldName1 == -1 ) then
 			handleNewName(dwarf, true);
@@ -402,7 +387,7 @@ function computeHeritage()
 		end
 		
 		if ( parent1 == nil and parent2 == nil ) then
-			--[[print("Generating unique last name for " .. dfhack.TranslateName(dwarf.name));
+			--print("Generating unique last name for " .. dfhack.TranslateName(dwarf.name));
 			local seed;
 			if ( isHistorical(dwarf) ) then
 				seed = dwarf.id;
@@ -415,15 +400,36 @@ function computeHeritage()
 				end
 			end
 			math.randomseed(seed);
-			print("seed = " .. seed);
-			detectAndResolveConflicts(dwarf, true);
-			print("    " .. dfhack.TranslateName(dwarf.name));]]
-			handleNewName(dwarf, true);
+			--print("seed = " .. seed);
+			local max = getMax(df.global.world.raws.language.words);
+			while(true) do
+				dwarf.name.words[0] = math.random(max+1)-1;
+				if ( nameAge[dwarf.name.words[0]] == nil ) then
+					break;
+				end
+			end
+			
+			while(true) do
+				dwarf.name.words[1] = math.random(max+1)-1;
+				if ( dwarf.name.words[1] ~= dwarf.name.words[0] and nameAge[dwarf.name.words[1]] == nil ) then
+					break;
+				end
+			end
+			
+			local newNameString = dfhack.TranslateName(dwarf.name);
+			if ( oldNameString ~= newNameString ) then
+				print("No parents: giving new unique last names:");
+				print("    old name = " .. oldNameString);
+				print("    new name = " .. newNameString);
+				print();
+			end
+			--print("    " .. dfhack.TranslateName(dwarf.name));
+			handleNewName(dwarf);
 			do return end;
 		end
 		
 		if ( parent1 == nil or parent2 == nil ) then
-			handleNewName(dwarf, true);
+			handleNewName(dwarf);
 			do return end;
 		end
 		
@@ -509,7 +515,7 @@ function computeHeritage()
 		
 		detectAndResolveConflicts(dwarf);
 		--only handleNewName when their name is finalized!
-		handleNewName(dwarf, true);
+		handleNewName(dwarf);
 		
 		local newNameString = dfhack.TranslateName(dwarf.name);
 		
