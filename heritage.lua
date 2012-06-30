@@ -90,6 +90,9 @@ function computeHeritage()
 	local count=0;
 	local idToHistoricalUnit = {};
 	local idToLocalUnit = {};
+	local localToHistorical = {};
+	local historicalToLocal = {};
+	local ticksPerYear = 403200; --403200 ticks in a year
 	
 	for index,unit in pairs(df.global.world.history.figures) do
 		if ( unit.race == dwarfRace ) then
@@ -103,9 +106,15 @@ function computeHeritage()
 	for index,unit in pairs(df.global.world.units.all) do
 		if ( unit.race == dwarfRace ) then
 			allUnits[count] = unit;
-			age[unit] = unit.relations.birth_year*403200 + unit.relations.birth_time; --403200 ticks in a year
+			age[unit] = unit.relations.birth_year*ticksPerYear + unit.relations.birth_time;
 			count = count+1;
 			idToLocalUnit[unit.id] = unit;
+			
+			if ( unit.hist_figure_id ~= -1 ) then
+				local historical_me = idToHistoricalUnit[unit.hist_figure_id];
+				localToHistorical[unit] = historical_me;
+				historicalToLocal[historical_me] = unit;
+			end
 		end
 	end
 	
@@ -223,30 +232,68 @@ function computeHeritage()
 	
 	local aliveNames = {};
 	local nameHistogram = {};
-	local nameAliveHistogram = {};
+	local aliveNameHistogram = {};
 	function handleNewName(dwarf, storeNames)
-		for i=0,1 do
-			local name = dwarf.name.words[i];
-			if ( name ~= -1 ) then
-				local old = nameAge[name];
-				if ( old == nil ) then
-					nameAge[name] = age[dwarf];
+		function newNameHelper(name)
+			if ( name == -1 ) then
+				do return end;
+			end
+			
+  			local old = nameAge[name];
+  			if ( old == nil ) then
+  				nameAge[name] = age[dwarf];
+				--[[print(string.format("Family founder of %-15s: %s",
+					df.global.world.raws.language.translations[0].words[name].value,
+					dfhack.TranslateName(dwarf.name)));]]
+  			else
+  				if ( age[dwarf] < old ) then
+  					nameAge[name] = age[dwarf];
+  				end
+  			end
+  			
+			allNames[name] = 1;
+			
+			old = nameHistogram[name];
+			if ( old == nil ) then
+				nameHistogram[name] = 1;
+			else
+				nameHistogram[name] = old+1;
+			end
+			
+			local alive=false;
+			local isLocal;
+  			if ( isHistorical(dwarf) ) then
+  				if ( dwarf.died_year == -1 ) then
+					alive = true;
+  				end
+				if ( historicalToLocal[dwarf] ~= nil ) then
+					isLocal = true;
 				else
-					if ( age[dwarf] < old ) then
-						nameAge[name] = age[dwarf];
-					end
+					isLocal = false;
 				end
-				allNames[name] = 1;
-				if ( isHistorical(dwarf) ) then
-					if ( dwarf.died_year == -1 ) then
-						aliveNames[name] = 1;
-					end
+  			else
+				isLocal = true;
+  				if ( not dwarf.flags1.dead ) then
+					alive = true;
+  				end
+  			end
+			
+			if ( alive and isLocal ) then
+  				aliveNames[name] = 1;
+				old = aliveNameHistogram[name];
+				if ( old == nil ) then
+					aliveNameHistogram[name] = 1;
+					print(string.format("leader(%-15s) = %s",
+						df.global.world.raws.language.translations[0].words[name].value,
+						dfhack.TranslateName(dwarf.name)));
 				else
-					if ( not dwarf.flags1.dead ) then
-						aliveNames[name] = 1;
-					end
+					aliveNameHistogram[name] = old+1;
 				end
 			end
+		end
+		for i=0,1 do
+			local name = dwarf.name.words[i];
+			newNameHelper(name);
 		end
 	end
 	
@@ -522,8 +569,12 @@ function computeHeritage()
 			local name = newList[i];
 			if ( name >= 0 ) then
 				local str = df.global.world.raws.language.translations[0].words[name].value;
-				print("    "..str);
-				print("        " .. nameAge[name]);
+				local temp = 
+				print(string.format("    %-15s: uses = %-4s, aliveUses = %4s, foundedIn %-5s",
+					str,
+					tostring(nameHistogram[name]),
+					tostring(aliveNameHistogram[name]),
+					tostring(nameAge[name]/ticksPerYear)));
 			end
 		end
 	end
