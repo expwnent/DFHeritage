@@ -300,10 +300,17 @@ function computeHeritage()
 	
 	function resolveConflict(dwarf)
 		local max = getMax(df.global.world.raws.language.words);
+		local first = math.random(max+1)-1;
+		local guess = first;
 		while (true) do
-			dwarf.name.words[1] = math.random(max+1)-1;
 			--print("    " .. dwarf.name.words[1]);
-			if ( nameAge[dwarf.name.words[1]] == nil ) then
+			if ( nameAge[guess] == nil ) then
+				dwarf.name.words[1] = guess;
+				break;
+			end
+			guess = (guess+1)%max;
+			if ( guess == first ) then
+				dwarf.name.words[1] = guess;
 				break;
 			end
 			--print("        " .. nameAge[dwarf.name.words[1]]);
@@ -402,23 +409,46 @@ function computeHeritage()
 			math.randomseed(seed);
 			--print("seed = " .. seed);
 			local max = getMax(df.global.world.raws.language.words);
+			local first = math.random(max+1)-1;
+			local guess = first;
 			while(true) do
-				dwarf.name.words[0] = math.random(max+1)-1;
-				if ( nameAge[dwarf.name.words[0]] == nil ) then
+				if ( nameAge[guess] == nil ) then
+					dwarf.name.words[0] = guess;
 					break;
 				end
+				guess = (guess+1)%max;
+				if ( guess == first ) then
+					dwarf.name.words[0] = guess;
+					break;
+				end;
 			end
 			
+			first = math.random(max+1)-1;
+			if ( first == dwarf.name.words[0] ) then
+				first = (first+1)%max;
+			end
+			guess = first;
+			local lastNonduplicate;
 			while(true) do
-				dwarf.name.words[1] = math.random(max+1)-1;
-				if ( dwarf.name.words[1] ~= dwarf.name.words[0] and nameAge[dwarf.name.words[1]] == nil ) then
+				if ( guess ~= dwarf.name.words[0] and nameAge[guess] == nil ) then
+					dwarf.name.words[1] = guess;
 					break;
 				end
+				local fullName = dfhack.TranslateName(dwarf.name);
+				if ( allNames[fullName] == nil ) then
+					lastNonduplicate = guess;
+				end
+				guess = (guess+1)%max;
+				if ( guess == first ) then
+					dwarf.name.words[1] = lastNonduplicate;
+					break;
+				end;
 			end
+			
 			
 			local newNameString = dfhack.TranslateName(dwarf.name);
 			if ( oldNameString ~= newNameString ) then
-				print("No parents: giving new unique last names:");
+				print("No parents: giving new unique last names (if possible):");
 				print("    old name = " .. oldNameString);
 				print("    new name = " .. newNameString);
 				print();
