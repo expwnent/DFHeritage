@@ -235,6 +235,7 @@ function computeHeritage()
 	local aliveNameHistogram = {};
 	local nameFounder = {};
 	local nameLeader = {};
+	local mostRecentName = -1;
 	function handleNewName(dwarf)
 		function newNameHelper(name)
 			if ( name == -1 ) then
@@ -248,6 +249,7 @@ function computeHeritage()
 				--[[print(string.format("Family founder of %-15s: %s",
 					df.global.world.raws.language.translations[0].words[name].value,
 					dfhack.TranslateName(dwarf.name)));]]
+				mostRecentName = name;
   			else
   				if ( age[dwarf] < old ) then
   					nameAge[name] = age[dwarf];
@@ -300,7 +302,7 @@ function computeHeritage()
 	
 	function resolveConflict(dwarf)
 		local max = getMax(df.global.world.raws.language.words);
-		local first = math.random(max+1)-1;
+		local first = math.random(max)-1;
 		local guess = first;
 		while (true) do
 			--print("    " .. dwarf.name.words[1]);
@@ -309,8 +311,17 @@ function computeHeritage()
 				break;
 			end
 			guess = (guess+1)%max;
+			if ( guess >= max ) then
+				dfhack.error("guess >= max! " .. guess .. ", " .. max);
+			end
 			if ( guess == first ) then
 				dwarf.name.words[1] = guess;
+				--dwarf.name.words[1] = mostRecentName;
+				--if ( dwarf.name.words[1] == dwarf.name.words[0] ) then
+				--	dwarf.name.words[0] = mostRecentName;
+				--end
+				--TODO: duplicate full names-----------------------------------------------------
+				--do return end;-------------------------------------------------------------------------------
 				break;
 			end
 			--print("        " .. nameAge[dwarf.name.words[1]]);
@@ -318,7 +329,7 @@ function computeHeritage()
 		detectAndResolveConflicts(dwarf);
 	end
 	
-	function detectAndResolveConflicts(dwarf, requireUnique)
+	function detectAndResolveConflicts(dwarf)
 		local name = dfhack.TranslateName(dwarf.name);
 		if ( allNames[name] ~= nil ) then
 			--print("name duplicate: " .. name );
@@ -381,6 +392,8 @@ function computeHeritage()
 			end
 		end
 		
+		--print("id = " .. dwarf.id);
+		
 		local parent1 = getParent(dwarf, "mother");
 		local parent2 = getParent(dwarf, "father");
 		
@@ -389,7 +402,7 @@ function computeHeritage()
 		local oldNameString = dfhack.TranslateName(dwarf.name);
 		
 		if ( oldName0 == -1 or oldName1 == -1 ) then
-			handleNewName(dwarf, true);
+			handleNewName(dwarf);
 			do return end; -- don't mess with weird shit
 		end
 		
@@ -409,7 +422,8 @@ function computeHeritage()
 			math.randomseed(seed);
 			--print("seed = " .. seed);
 			local max = getMax(df.global.world.raws.language.words);
-			local first = math.random(max+1)-1;
+			--print("max = " .. max);
+			local first = math.random(max)-1;
 			local guess = first;
 			while(true) do
 				if ( nameAge[guess] == nil ) then
@@ -419,11 +433,13 @@ function computeHeritage()
 				guess = (guess+1)%max;
 				if ( guess == first ) then
 					dwarf.name.words[0] = guess;
+					--dwarf.name.words[0] = mostRecentName;
+					--dwarf.name.words[1] = mostRecentName; -- gonna happen anyway
 					break;
 				end;
 			end
 			
-			first = math.random(max+1)-1;
+			first = math.random(max)-1;
 			if ( first == dwarf.name.words[0] ) then
 				first = (first+1)%max;
 			end
@@ -441,10 +457,10 @@ function computeHeritage()
 				guess = (guess+1)%max;
 				if ( guess == first ) then
 					dwarf.name.words[1] = lastNonduplicate;
+					--dwarf.name.words[1] = mostRecentName;
 					break;
 				end;
 			end
-			
 			
 			local newNameString = dfhack.TranslateName(dwarf.name);
 			if ( oldNameString ~= newNameString ) then
@@ -620,4 +636,5 @@ function computeHeritage()
 	printNameAges();
 end
 
-dfhack.with_suspend(computeHeritage);
+computeHeritage();
+--dfhack.with_suspend(computeHeritage);
