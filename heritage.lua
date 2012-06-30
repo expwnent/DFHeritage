@@ -222,31 +222,36 @@ function computeHeritage()
 	childIndexTable = computeChildIndexTable();
 	
 	local aliveNames = {};
-	function handleNewName(dwarf)
+	function handleNewName(dwarf, storeNames)
 		for i=0,1 do
 			local name = dwarf.name.words[i];
-			local old = nameAge[name];
-			if ( old == nil ) then
-				nameAge[name] = age[dwarf];
-			else
-				if ( age[dwarf] < old ) then
+			if ( name ~= -1 ) then
+				local old = nameAge[name];
+				if ( old == nil ) then
 					nameAge[name] = age[dwarf];
+				else
+					if ( age[dwarf] < old ) then
+						nameAge[name] = age[dwarf];
+					end
 				end
-			end
-			if ( isHistorical(dwarf) ) then
-				if ( dwarf.died_year == -1 ) then
-					--aliveNames[name] = 1;
-				end
-			else
-				if ( not dwarf.flags1.dead ) then
-					aliveNames[name] = 1;
+				if ( storeNames == true ) then
+					allNames[name] = 1;
+					if ( isHistorical(dwarf) ) then
+						if ( dwarf.died_year == -1 ) then
+							aliveNames[name] = 1;
+						end
+					else
+						if ( not dwarf.flags1.dead ) then
+							aliveNames[name] = 1;
+						end
+					end
 				end
 			end
 		end
 	end
 	
 	for index,unit in pairs(allUnits) do
-		handleNewName(unit);
+		handleNewName(unit, false);
 	end
 	
 	function resolveConflict(dwarf)
@@ -266,13 +271,13 @@ function computeHeritage()
 			--print("name duplicate: " .. name );
 			resolveConflict(dwarf);
 			--print("    new name: " .. dfhack.TranslateName(dwarf.name));
-			--handleNewName(dwarf);
+			--handleNewName(dwarf, true);
 			do return end;
 		end
 		
 		if ( dwarf.name.words[0] == dwarf.name.words[1] ) then
 			resolveConflict(dwarf);
-			--handleNewName(dwarf);
+			--handleNewName(dwarf, true);
 			do return end;
 		end
 		
@@ -287,15 +292,13 @@ function computeHeritage()
 						dwarf.name.words[1] = nameI;
 					end
 					resolveConflict(dwarf);
-					--handleNewName(dwarf);
+					--handleNewName(dwarf, true);
 					do return end;
 				end
 			end
 		end
-		handleNewName(dwarf);
+		--handleNewName(dwarf, true);
 		sortName(dwarf);
-		
-		allNames[name] = 1;
 	end
 	
 	function sortName(dwarf)
@@ -306,10 +309,13 @@ function computeHeritage()
 			do return end;
 		end
 		
-		if ( nameAge[name1] < nameAge[name0] ) then
+		local age0 = nameAge[name0];
+		local age1 = nameAge[name1];
+		
+		if ( age1 ~= nil and (age0 == nil or age1 < age0) ) then
 			dwarf.name.words[0] = name1;
 			dwarf.name.words[1] = name0;
-		elseif ( nameAge[name1] == nameAge[name0] ) then
+		elseif ( age1 == age0 ) then
 			local str1 = df.global.world.raws.language.translations[0].words[name0].value;
 			local str2 = df.global.world.raws.language.translations[0].words[name1].value;
 			if ( str2 < str1 ) then
@@ -324,7 +330,7 @@ function computeHeritage()
 			do return end;
 		end
 		
-		sortName(dwarf);
+		--sortName(dwarf);
 		
 		local parent1 = getParent(dwarf, "mother");
 		local parent2 = getParent(dwarf, "father");
@@ -333,6 +339,7 @@ function computeHeritage()
 		local oldName1 = dwarf.name.words[1];
 		
 		if ( oldName0 == -1 or oldName1 == -1 ) then
+			handleNewName(dwarf, true);
 			do return end; -- don't mess with weird shit
 		end
 		
@@ -350,10 +357,12 @@ function computeHeritage()
 			end
 			detectAndResolveConflicts(dwarf, true);
 			print("    " .. dfhack.TranslateName(dwarf.name));]]
+			handleNewName(dwarf, true);
 			do return end;
 		end
 		
 		if ( parent1 == nil or parent2 == nil ) then
+			handleNewName(dwarf, true);
 			do return end;
 		end
 		
@@ -444,6 +453,8 @@ function computeHeritage()
 		end
 		
 		detectAndResolveConflicts(dwarf);
+		--only handleNewName when their name is finalized!
+		handleNewName(dwarf, true);
 		
 		local oldNameString = dfhack.TranslateName(dwarf.name);
 	end
