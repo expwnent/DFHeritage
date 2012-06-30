@@ -233,6 +233,8 @@ function computeHeritage()
 	local aliveNames = {};
 	local nameHistogram = {};
 	local aliveNameHistogram = {};
+	local nameFounder = {};
+	local nameLeader = {};
 	function handleNewName(dwarf, storeNames)
 		function newNameHelper(name)
 			if ( name == -1 ) then
@@ -242,6 +244,7 @@ function computeHeritage()
   			local old = nameAge[name];
   			if ( old == nil ) then
   				nameAge[name] = age[dwarf];
+				nameFounder[name] = dwarf;
 				--[[print(string.format("Family founder of %-15s: %s",
 					df.global.world.raws.language.translations[0].words[name].value,
 					dfhack.TranslateName(dwarf.name)));]]
@@ -283,9 +286,7 @@ function computeHeritage()
 				old = aliveNameHistogram[name];
 				if ( old == nil ) then
 					aliveNameHistogram[name] = 1;
-					print(string.format("leader(%-15s) = %s",
-						df.global.world.raws.language.translations[0].words[name].value,
-						dfhack.TranslateName(dwarf.name)));
+					nameLeader[name] = dwarf;
 				else
 					aliveNameHistogram[name] = old+1;
 				end
@@ -295,10 +296,6 @@ function computeHeritage()
 			local name = dwarf.name.words[i];
 			newNameHelper(name);
 		end
-	end
-	
-	for index,unit in pairs(allUnits) do
-		--handleNewName(unit, false);
 	end
 	
 	function resolveConflict(dwarf)
@@ -570,11 +567,17 @@ function computeHeritage()
 			if ( name >= 0 ) then
 				local str = df.global.world.raws.language.translations[0].words[name].value;
 				local temp = 
-				print(string.format("    %-15s: uses = %-4s, aliveUses = %4s, foundedIn %-5s",
+				print(string.format("    family %-15s: uses = %-4s, localAliveUses = %4s",
 					str,
 					tostring(nameHistogram[name]),
-					tostring(aliveNameHistogram[name]),
-					tostring(nameAge[name]/ticksPerYear)));
+					tostring(aliveNameHistogram[name])));
+				
+				print(string.format("        founded in %-4.2f by %s",
+					nameAge[name]/ticksPerYear,
+					dfhack.TranslateName(nameFounder[name].name)));
+				print(string.format("        locally led by %s",
+					dfhack.TranslateName(nameLeader[name].name)));
+				print();
 			end
 		end
 	end
