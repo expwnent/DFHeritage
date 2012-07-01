@@ -350,7 +350,6 @@ function computeHeritage()
 		local first = math.random(max)-1;
 		local guess = first;
 		while (true) do
-			--print("    " .. dwarf.name.words[1]);
 			if ( nameAge[guess] == nil ) then
 				dwarf.name.words[1] = guess;
 				break;
@@ -362,15 +361,10 @@ function computeHeritage()
 			if ( outOfNames or guess == first ) then
 				outOfNames = true;
 				dwarf.name.words[1] = first;
-				--dwarf.name.words[1] = mostRecentName;
-				--if ( dwarf.name.words[1] == dwarf.name.words[0] ) then
-				--	dwarf.name.words[0] = mostRecentName;
-				--end
 				--TODO: duplicate full names-----------------------------------------------------
-				--do return end;-------------------------------------------------------------------------------
+				--do return end;
 				break;
 			end
-			--print("        " .. nameAge[dwarf.name.words[1]]);
 		end
 		detectAndResolveConflicts(dwarf);
 	end
@@ -378,24 +372,15 @@ function computeHeritage()
 	function detectAndResolveConflicts(dwarf)
 		local name = dfhack.TranslateName(dwarf.name);
 		if ( allNames[name] ~= nil ) then
-			--print("name duplicate: " .. name );
 			resolveConflict(dwarf);
-			--print("    new name: " .. dfhack.TranslateName(dwarf.name));
-			--handleNewName(dwarf);
 			do return end;
 		end
 		
 		if ( dwarf.name.words[0] == dwarf.name.words[1] ) then
-			--print("same first and last: " .. dwarf.id);
-			--print("    1: " .. dwarf.name.words[0]);
-			--print("    2: " .. dwarf.name.words[1]);
 			resolveConflict(dwarf);
-			--handleNewName(dwarf);
 			do return end;
 		end
 		
-		--handleNewName(dwarf);
-		--sortName(dwarf); --just in case
 	end
 	
 	function sortName(dwarf)
@@ -528,13 +513,6 @@ function computeHeritage()
 			do return end;
 		end
 		
-		--not sure this is necessary
-		--[[if ( age[parent2] < age[parent1] ) then
-			local temp = parent1;
-			parent1 = parent2;
-			parent2 = temp;
-		end--]]
-		
 		local nameTable = {};
 		nameTable[1] = parent1.name.words[0];
 		nameTable[2] = parent1.name.words[1];
@@ -647,20 +625,9 @@ function computeHeritage()
 		local newNameString = dfhack.TranslateName(dwarf.name);
 		
 		if ( oldNameString ~= newNameString ) then
-			--print("seed = " .. seed);
-			--print("child index = " .. childIndex);
 			print("old name = " .. oldNameString);
 			print("new name = " .. newNameString);
-			--print("parent1 = " .. parent1.id);
-			--print("    " .. dfhack.TranslateName(parent1.name));
-			--print("parent2 = " .. parent2.id);
-			--print("    " .. dfhack.TranslateName(parent2.name));
-			--print("nameAge[" .. nameTable[1] .. "] = " .. nameAge[nameTable[1]]);
-			--print("nameAge[" .. nameTable[2] .. "] = " .. nameAge[nameTable[2]]);
-			--print("nameAge[" .. nameTable[3] .. "] = " .. nameAge[nameTable[3]]);
-			--print("nameAge[" .. nameTable[4] .. "] = " .. nameAge[nameTable[4]]);
 			print();
-			--dfhack.error("bob!");
 		end
 	end
 	
@@ -731,8 +698,7 @@ function computeHeritage()
 	function printNameAges()
 		local count = 0;
 		local newList = {};
-		--for name,_ in pairs(aliveNames) do
-		for name,_ in pairs(allNames) do
+		for name,_ in pairs(aliveNames) do
 			newList[count] = name;
 			count = count+1;
 		end
@@ -746,8 +712,8 @@ function computeHeritage()
 			local age1 = nameAge[name1];
 			local age2 = nameAge[name2];
 			
-			age1 = aliveNameHistogram[name1];
-			age2 = aliveNameHistogram[name2];
+			--age1 = aliveNameHistogram[name1];
+			--age2 = aliveNameHistogram[name2];
 			
 			age1 = influence[nameLeader[name1]];
 			age2 = influence[nameLeader[name2]];
