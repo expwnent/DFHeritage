@@ -62,6 +62,6 @@ Requires DFHack. Was written for DFHack 0.34.11 r1. Install that or a later vers
 
 The script itself is probably horribly illegible, but it should work. Just put it in hack\scripts\heritage.lua and run it with "lua hack/scripts/heritage.lua". Load a save in dwarf mode first. I haven't tried in adventure mode or legends mode, but I predict that it would do something between working fine and causing the apocalypse.
 
-After running, it should output all the last names that are present in your fort (among the living), oldest names first.
+After running, it should output all the last names that are present in your fort (among the living), most frequently-used names last.
 
 You will, of course, need to rerun the script any time a dwarf has children in your fort. Fortunately, the script is very fast.
