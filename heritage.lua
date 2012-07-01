@@ -61,10 +61,42 @@ function merge(list, lessThan, lo, mid, hi)
 	end
 end
 
+local doOnce = 0;
+
 function sort(list, lessThan, lo, hi)
 	if ( lo == hi or lo > hi or lo+1 == hi ) then
 		do return end;
 	end
+	
+	--print("lo="..lo..", hi="..hi);
+	
+	--[[--see if some of it is already sorted
+	local firstUnsorted = 0;
+	local previous = list[lo];
+	local index = lo+1;
+	while(true) do
+		index = index+1;
+		if ( index >= hi ) then
+			break;
+		end
+		
+		if ( lessThan(index, index-1) ) then
+			firstUnsorted = index;
+			if ( doOnce == 0 ) then
+				print(firstUnsorted);
+				doOnce = 1;
+			end
+			break;
+		end
+	end
+	
+	if ( firstUnsorted - lo > 10 and firstUnsorted - lo >= (hi-lo)/4 ) then
+		local mid = firstUnsorted-1;
+		--sort(list, lessThan, lo, mid);
+		sort(list, lessThan, mid, hi);
+		merge(list, lessThan, lo, mid, hi);
+		do return end;
+	end]]
 	
 	local mid = math.floor((lo+hi)/2);
 	sort(list, lessThan, lo, mid);
@@ -118,7 +150,7 @@ function computeHeritage()
 		end
 	end
 	
-	--print("Sorting...");
+	print("Sorting...");
 	--sort units
 	function lessThan(index1, index2)
 		if ( index1 == index2 ) then
@@ -144,7 +176,7 @@ function computeHeritage()
 	end
 	sort(allUnits, lessThan, 0, count);
 	
-	--print("Done sorting!");
+	print("Done sorting!");
 	
 	function getParent(unit, whichParent)
 		if ( isHistorical(unit) ) then
@@ -233,8 +265,11 @@ function computeHeritage()
 	local aliveNames = {};
 	local nameHistogram = {};
 	local aliveNameHistogram = {};
+	local localAliveNameHistogram = {};
 	local nameFounder = {};
 	local nameLeader = {};
+	local localNameLeader = {};
+	local outOfNames = false;
 	local mostRecentName = -1;
 	function handleNewName(dwarf)
 		function newNameHelper(name)
@@ -283,14 +318,24 @@ function computeHeritage()
   				end
   			end
 			
-			if ( alive and isLocal ) then
-  				aliveNames[name] = 1;
+			if ( alive ) then
 				old = aliveNameHistogram[name];
 				if ( old == nil ) then
-					aliveNameHistogram[name] = 1;
 					nameLeader[name] = dwarf;
+					aliveNameHistogram[name] = 1;
 				else
 					aliveNameHistogram[name] = old+1;
+				end
+			end
+			
+			if ( alive and isLocal ) then
+  				aliveNames[name] = 1;
+				old = localAliveNameHistogram[name];
+				if ( old == nil ) then
+					localAliveNameHistogram[name] = 1;
+					localNameLeader[name] = dwarf;
+				else
+					localAliveNameHistogram[name] = old+1;
 				end
 			end
 		end
@@ -314,8 +359,9 @@ function computeHeritage()
 			if ( guess >= max ) then
 				dfhack.error("guess >= max! " .. guess .. ", " .. max);
 			end
-			if ( guess == first ) then
-				dwarf.name.words[1] = guess;
+			if ( outOfNames or guess == first ) then
+				outOfNames = true;
+				dwarf.name.words[1] = first;
 				--dwarf.name.words[1] = mostRecentName;
 				--if ( dwarf.name.words[1] == dwarf.name.words[0] ) then
 				--	dwarf.name.words[0] = mostRecentName;
@@ -431,8 +477,9 @@ function computeHeritage()
 					break;
 				end
 				guess = (guess+1)%max;
-				if ( guess == first ) then
-					dwarf.name.words[0] = guess;
+				if ( outOfNames or guess == first ) then
+					outOfNames = true;
+					dwarf.name.words[0] = first;
 					--dwarf.name.words[0] = mostRecentName;
 					--dwarf.name.words[1] = mostRecentName; -- gonna happen anyway
 					break;
@@ -455,13 +502,15 @@ function computeHeritage()
 					lastNonduplicate = guess;
 				end
 				guess = (guess+1)%max;
-				if ( guess == first ) then
+				if ( outOfNames or guess == first ) then
+					outOfNames = true;
 					dwarf.name.words[1] = lastNonduplicate;
 					--dwarf.name.words[1] = mostRecentName;
 					break;
 				end;
 			end
 			
+			sortName(dwarf);
 			local newNameString = dfhack.TranslateName(dwarf.name);
 			if ( oldNameString ~= newNameString ) then
 				print("No parents: giving new unique last names (if possible):");
@@ -517,6 +566,37 @@ function computeHeritage()
 		local childIndex = childIndexTable[dwarf];
 		childIndex = childIndex % 6;
 		
+		--[[if ( childIndex == 0 ) then
+			newName0 = nameTable[1];
+			newName1 = nameTable[2];
+		elseif ( childIndex == 1 ) then
+			newName0 = nameTable[1];
+			newName1 = nameTable[3];
+		elseif ( childIndex == 2 ) then
+			newName0 = nameTable[1];
+			newName1 = nameTable[4];
+		elseif ( childIndex == 3 ) then
+			newName0 = nameTable[2];
+			newName1 = nameTable[3];
+		elseif ( childIndex == 4 ) then
+			newName0 = nameTable[2];
+			newName1 = nameTable[4];
+		elseif ( childIndex == 5 ) then
+			newName0 = nameTable[3];
+			newName1 = nameTable[4];
+		else
+			dfhack.error("Invalid child index: " .. childIndex);
+		end--]]
+		
+		--[[newName0 = nameTable[1];
+		newName1 = nameTable[2];
+		if ( newName1 == newName0 ) then
+			newName1 = nameTable[3];
+			if ( newName1 == newName0 ) then
+				newName1 = nameTable[4];
+			end
+		end--]]
+		
 		if ( childIndex == 0 ) then
 			newName0 = nameTable[1];
 			newName1 = nameTable[2];
@@ -560,6 +640,7 @@ function computeHeritage()
 		math.randomseed(seed);
 		
 		detectAndResolveConflicts(dwarf);
+		sortName(dwarf);
 		--only handleNewName when their name is finalized!
 		handleNewName(dwarf);
 		
@@ -587,11 +668,71 @@ function computeHeritage()
 		helper(dwarf);
 	end
 	
+	local influence = {};
+	function getBoss(unit)
+		local name0 = unit.name.words[0];
+		local name1 = unit.name.words[1];
+		local leader0 = nameLeader[name0];
+		local leader1 = nameLeader[name1];
+		
+		if ( leader0 == unit ) then
+			return leader1;
+		end
+		if ( leader1 == unit ) then
+			return leader0;
+		end
+		
+		dfhack.error("WTF?");
+	end
+	
+	function computeInfluence(name)
+		local leader = nameLeader[name];
+		if ( leader == nil ) then
+			--influence[] = 0;
+			return 0;
+		end
+		
+		local otherName = leader.name.words[0];
+		if ( otherName == name ) then
+			otherName = leader.name.words[1];
+		end
+		
+		local inf = influence[leader] or 0;
+		inf = inf + (aliveNameHistogram[name] or 0);
+		influence[leader] = inf;
+		
+		local boss = getBoss(leader);
+		
+		if ( boss == leader ) then
+			local count2 = aliveNameHistogram[otherName] or 0;
+			influence[leader] = inf + count2;
+			return influence[leader];
+		end
+		
+		--he's our boss: add our influence to him, all the way up
+		while(true) do
+			local count1 = influence[boss] or 0;
+			influence[boss] = count1 + aliveNameHistogram[name];
+			local lastBoss = boss;
+			boss = getBoss(boss);
+			if ( boss == lastBoss ) then
+				break;
+			end
+		end
+		
+		return influence[leader];
+	end
+	
+	for name,_ in pairs(allNames) do
+		computeInfluence(name);
+	end
+	
 	--print out the age of each name
 	function printNameAges()
 		local count = 0;
 		local newList = {};
-		for name,_ in pairs(aliveNames) do
+		--for name,_ in pairs(aliveNames) do
+		for name,_ in pairs(allNames) do
 			newList[count] = name;
 			count = count+1;
 		end
@@ -602,35 +743,76 @@ function computeHeritage()
 			
 			local name1 = newList[a];
 			local name2 = newList[b];
-			if (nameAge[name1] < nameAge[name2]) then
-				return true;
-			elseif (nameAge[name1] == nameAge[name2]) then
+			local age1 = nameAge[name1];
+			local age2 = nameAge[name2];
+			
+			age1 = aliveNameHistogram[name1];
+			age2 = aliveNameHistogram[name2];
+			
+			age1 = influence[nameLeader[name1]];
+			age2 = influence[nameLeader[name2]];
+			if ( age1 == nil and age2 == nil ) then
+				do return false end;
+			end
+			if ( age2 == nil ) then
+				do return false end;
+			end
+			if ( age1 == nil ) then
+				do return true end;
+			end
+			if (age1 < age2) then
+				do return true end;
+			elseif (age1 == age2) then
 				local str1 = df.global.world.raws.language.translations[0].words[name1].value;
 				local str2 = df.global.world.raws.language.translations[0].words[name2].value;
-				return str1 < str2;
+				do return str1 < str2 end;
 			end
 			return false;
 		end
 		sort(newList, ageLessThan, 0, count);
 		
 		print("Names that are present in this fort (oldest names listed first): ");
-		for i=0,count-1 do
+		function helper(i)
 			local name = newList[i];
-			if ( name >= 0 ) then
-				local str = df.global.world.raws.language.translations[0].words[name].value;
-				local temp = 
-				print(string.format("    family %-15s: uses = %-4s, localAliveUses = %4s",
-					str,
-					tostring(nameHistogram[name]),
-					tostring(aliveNameHistogram[name])));
-				
-				print(string.format("        founded in %-4.2f by %s",
-					nameAge[name]/ticksPerYear,
-					dfhack.TranslateName(nameFounder[name].name)));
-				print(string.format("        locally led by %s",
-					dfhack.TranslateName(nameLeader[name].name)));
-				print();
+			--print(name);
+			if ( name == -1 ) then
+				return;
 			end
+			if ( aliveNameHistogram[name] == nil ) then
+				return;
+			end
+			
+			local leader = nameLeader[name];
+			if ( leader ~= getBoss(leader) ) then
+				return;
+			end
+			
+			local str = df.global.world.raws.language.translations[0].words[name].value;
+			local temp = 
+			print(string.format("    family %-10s: uses = %-4s, aliveUses = %4s, localAliveUses = %4s",
+				str,
+				tostring(nameHistogram[name]),
+				tostring(aliveNameHistogram[name]),
+				tostring(localAliveNameHistogram[name])));
+			
+			print(string.format("        founded in %-4.2f by %s",
+				nameAge[name]/ticksPerYear,
+				dfhack.TranslateName(nameFounder[name].name)));
+			if ( nameLeader[name] ~= nil ) then
+				print(string.format("        led by %s, born %-4.2f, who has influence level %d",
+					dfhack.TranslateName(nameLeader[name].name),
+					age[nameLeader[name]]/ticksPerYear,
+					influence[nameLeader[name]]));
+			end
+			if ( localNameLeader[name] ~= nil ) then 
+				print(string.format("        locally led by %s, born %-4.2f",
+					dfhack.TranslateName(localNameLeader[name].name),
+					age[localNameLeader[name]]/ticksPerYear));
+			end
+			print();
+		end
+		for i=0,count-1 do
+			helper(i);
 		end
 	end
 	printNameAges();
