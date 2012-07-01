@@ -715,8 +715,8 @@ function computeHeritage()
 			--age1 = aliveNameHistogram[name1];
 			--age2 = aliveNameHistogram[name2];
 			
-			age1 = influence[nameLeader[name1]];
-			age2 = influence[nameLeader[name2]];
+			--age1 = influence[nameLeader[name1]];
+			--age2 = influence[nameLeader[name2]];
 			if ( age1 == nil and age2 == nil ) then
 				do return false end;
 			end
@@ -765,10 +765,16 @@ function computeHeritage()
 				nameAge[name]/ticksPerYear,
 				dfhack.TranslateName(nameFounder[name].name)));
 			if ( nameLeader[name] ~= nil ) then
-				print(string.format("        led by %s, born %-4.2f, who has influence level %d",
-					dfhack.TranslateName(nameLeader[name].name),
-					age[nameLeader[name]]/ticksPerYear,
-					influence[nameLeader[name]]));
+				if ( false ) then
+					print(string.format("        led by %s, born %-4.2f, who has influence level %d",
+						dfhack.TranslateName(nameLeader[name].name),
+						age[nameLeader[name]]/ticksPerYear,
+						influence[nameLeader[name]]));
+				else
+					print(string.format("        led by %s, born %-4.2f",
+						dfhack.TranslateName(nameLeader[name].name),
+						age[nameLeader[name]]/ticksPerYear));
+				end
 			end
 			if ( localNameLeader[name] ~= nil ) then 
 				print(string.format("        locally led by %s, born %-4.2f",
