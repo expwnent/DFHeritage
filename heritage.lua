@@ -712,8 +712,8 @@ function computeHeritage()
 			local age1 = nameAge[name1];
 			local age2 = nameAge[name2];
 			
-			--age1 = aliveNameHistogram[name1];
-			--age2 = aliveNameHistogram[name2];
+			age1 = localAliveNameHistogram[name1];
+			age2 = localAliveNameHistogram[name2];
 			
 			--age1 = influence[nameLeader[name1]];
 			--age2 = influence[nameLeader[name2]];
@@ -737,7 +737,7 @@ function computeHeritage()
 		end
 		sort(newList, ageLessThan, 0, count);
 		
-		print("Names that are present in this fort (oldest names listed first): ");
+		print("Names that are present in this fort (least frequently-used names listed first): ");
 		function helper(i)
 			local name = newList[i];
 			--print(name);
