@@ -34,17 +34,6 @@ Here's the rules of the new system, in no particular order:
 Possible improvements: I've considered giving royalty a special extra last name, like what happens with dwarves that kill a lot of enemies. This extra last name would always be passed on unless there's a conflict, so you can tell which dwarves are descended from a monarch, and if so, which ones. The only problem is I don't know how to determine who was a civilization leader and when in lua. Advice on this is very welcome. Doing the rest of it shouldn't be that hard.
 
 ============================================================================
-Installation:
-
-Requires DFHack. Was written for DFHack 0.34.11 r1. Install that or a later version first.
-
-The script itself is probably horribly illegible, but it should work. Just put it in hack\scripts\heritage.lua and run it with "lua hack/scripts/heritage.lua". Load a save in dwarf mode first. I haven't tried in adventure mode or legends mode, but I predict that it would do something between working fine and causing the apocalypse.
-
-After running, it should output all the last names that are present in your fort (among the living), oldest names first.
-
-You will, of course, need to rerun the script any time a dwarf has children in your fort. Fortunately, the script is very fast.
-
-============================================================================
 Troubleshooting:
 
 1. Save first. Keep a backup. You don't want to lose a save over this (though I never have).
@@ -65,3 +54,14 @@ Thoughts:
 A dwarf doesn't necessarily share a last name with a sibling, or even a parent.
 
 This mod does not change any gameplay mechanics, but I think it adds some very interesting flavor to the game. Every dwarf has exactly two Families, one for each last name. In theory, the game should only generate only as many Families as necessary to prevent repeated last names, but I've seen it generate quite a few.
+
+============================================================================
+Installation:
+
+Requires DFHack. Was written for DFHack 0.34.11 r1. Install that or a later version first.
+
+The script itself is probably horribly illegible, but it should work. Just put it in hack\scripts\heritage.lua and run it with "lua hack/scripts/heritage.lua". Load a save in dwarf mode first. I haven't tried in adventure mode or legends mode, but I predict that it would do something between working fine and causing the apocalypse.
+
+After running, it should output all the last names that are present in your fort (among the living), oldest names first.
+
+You will, of course, need to rerun the script any time a dwarf has children in your fort. Fortunately, the script is very fast.
