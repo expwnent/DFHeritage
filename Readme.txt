@@ -60,7 +60,9 @@ Installation:
 
 Requires DFHack. Was written for DFHack 0.34.11 r1. Install that or a later version first.
 
-The script itself is probably horribly illegible, but it should work. Just put it in hack\scripts\heritage.lua and run it with "lua hack/scripts/heritage.lua". Load a save in dwarf mode first. I haven't tried in adventure mode or legends mode, but I predict that it would do something between working fine and causing the apocalypse.
+The script itself is probably horribly illegible, but it should work. Just put it in hack\scripts\heritage.lua and run it with "lua hack/scripts/heritage.lua".
+
+Load a save in dwarf mode first. Legends mode won't crash, but it also won't actually change anything because DF doesn't change save files in legends mode. It will run in adventure mode, but I think it doesn't actually do anything. I wouldn't try it.
 
 After running, it should output all the last names that are present in your fort (among the living), most frequently-used names last.
 
