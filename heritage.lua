@@ -1109,12 +1109,16 @@ local outputType = 'printLocalNames';
 local sortBy = 'fortAliveUses';
 local reverse = false;
 local prev = nil;
+local cancelRepeat = false;
+local repeatEvery = nil;
 for i,v in pairs(arguments) do
 	if ( prev == nil ) then
-		if ( v == '-nameScheme' or v == '-outputType' or v == '-sortOutputBy' ) then
+		if ( v == '-nameScheme' or v == '-outputType' or v == '-sortOutputBy' or v == '-repeatEvery' ) then
 			prev = v;
 		elseif ( v == '-reverse' ) then
 			reverse = true;
+		elseif ( v == '-cancelRepeat' ) then
+			cancelRepeat = true;
 		elseif ( v == '-h' or v == '-help' or v == '--help' ) then
 			usage();
 			print('-nameScheme');
@@ -1140,6 +1144,10 @@ for i,v in pairs(arguments) do
 			print('    fortNameAge: sort printed names by the time since the birth of the first dwarf in the fort with the name.');
 			print('    influence: sort printed names by influence.');
 			print('-reverse: reverse the specified sort order.');
+			print('-repeatEvery');
+			print('    year');
+			print('    month');
+			print('-cancelRepeat: cancels any scheduled future calling of this. Implied by -repeatEvery.');
 			do return end;
 		else
 			print('Incorrect usage: "' .. v .. '"');
@@ -1173,6 +1181,16 @@ for i,v in pairs(arguments) do
 			do return end;
 		end
 		prev = nil;
+	elseif ( prev == '-repeatEvery' ) then
+		if ( v == 'month' or v == 'year' ) then
+			repeatEvery = v;
+			cancelRepeat = true;
+		else
+			print('Incorrect usage: "' .. v .. '"');
+			usage();
+			do return end;
+		end
+		prev = nil;
 	else
 		print('Incorrect usage: "' .. v .. '"');
 		usage();
@@ -1186,4 +1204,32 @@ if ( prev ~= nil ) then
 	do return end;
 end
 
-dfhack.with_suspend(computeHeritage, nameScheme, outputType, sortBy, reverse);
+--dfhack.with_suspend(computeHeritage, nameScheme, outputType, sortBy, reverse);
+
+--global timer
+if ( cancelRepeat ) then
+	if ( timer ~= nil ) then
+		dfhack.timeout_active(timer,nil);
+	end
+end
+
+local tempFunction = function(dumbHelper)
+		--computeHeritange(nameScheme, outputType, sortBy, reverse);
+		dfhack.with_suspend(computeHeritage, nameScheme, outputType, sortBy, reverse);
+		
+		function dumb()
+			dumbHelper(dumbHelper);
+		end
+		
+		if ( repeatEvery == 'year' ) then
+			timer = dfhack.timeout(1,'years',dumb);
+		elseif ( repeatEvery == 'month' ) then
+			timer = dfhack.timeout(1,'months',dumb);
+		elseif ( repeatEvery == nil ) then
+			--dfhack.with_suspend(computeHeritage, nameScheme, outputType, sortBy, reverse);
+		else
+			dfhack.error("Error.");
+		end
+	end
+
+tempFunction(tempFunction);
