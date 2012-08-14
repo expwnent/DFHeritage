@@ -115,7 +115,7 @@ function getMax(list)
 	return result;
 end
 
-function computeHeritage()
+function computeHeritage(nameScheme, outputType, sortOutputBy, doReverseOutputOrder)
 	local dwarfRace = df.global.ui.race_id;
 	local allUnits = {};
 	local age = {};
@@ -126,6 +126,7 @@ function computeHeritage()
 	local historicalToLocal = {};
 	local ticksPerYear = 403200; --403200 ticks in a year
 	
+	--compute allUnits, age, count, idToHistoricalUnit
 	for index,unit in pairs(df.global.world.history.figures) do
 		if ( unit.race == dwarfRace ) then
 			allUnits[count] = unit;
@@ -135,6 +136,7 @@ function computeHeritage()
 		end
 	end
 	
+	--compute allUnits, age, count, idToLocalUnit, localToHistorical, historicalToLocal
 	for index,unit in pairs(df.global.world.units.all) do
 		if ( unit.race == dwarfRace ) then
 			allUnits[count] = unit;
@@ -265,10 +267,12 @@ function computeHeritage()
 	local aliveNames = {};
 	local nameHistogram = {};
 	local aliveNameHistogram = {};
+	local localNameHistogram = {};
 	local localAliveNameHistogram = {};
 	local nameFounder = {};
 	local nameLeader = {};
 	local localNameLeader = {};
+	local localNameFounder = {};
 	local outOfNames = false;
 	local mostRecentName = -1;
 	function handleNewName(dwarf)
@@ -277,20 +281,20 @@ function computeHeritage()
 				do return end;
 			end
 			
-  			local old = nameAge[name];
-  			if ( old == nil ) then
-  				nameAge[name] = age[dwarf];
+			local old = nameAge[name];
+			if ( old == nil ) then
+				nameAge[name] = age[dwarf];
 				nameFounder[name] = dwarf;
 				--[[print(string.format("Family founder of %-15s: %s",
 					df.global.world.raws.language.translations[0].words[name].value,
 					dfhack.TranslateName(dwarf.name)));]]
 				mostRecentName = name;
-  			else
-  				if ( age[dwarf] < old ) then
-  					nameAge[name] = age[dwarf];
-  				end
-  			end
-  			
+			else
+				if ( age[dwarf] < old ) then
+					nameAge[name] = age[dwarf];
+				end
+			end
+			
 			allNames[name] = 1;
 			
 			old = nameHistogram[name];
@@ -302,21 +306,31 @@ function computeHeritage()
 			
 			local alive=false;
 			local isLocal;
-  			if ( isHistorical(dwarf) ) then
-  				if ( dwarf.died_year == -1 ) then
+			if ( isHistorical(dwarf) ) then
+				if ( dwarf.died_year == -1 ) then
 					alive = true;
-  				end
+				end
 				if ( historicalToLocal[dwarf] ~= nil ) then
 					isLocal = true;
 				else
 					isLocal = false;
 				end
-  			else
+			else
 				isLocal = true;
-  				if ( not dwarf.flags1.dead ) then
+				if ( not dwarf.flags1.dead ) then
 					alive = true;
-  				end
-  			end
+				end
+			end
+			
+			if ( isLocal ) then
+				old = localNameHistogram[name];
+				if ( old == nil ) then
+					localNameHistogram[name] = 1;
+					localNameFounder[name] = dwarf;
+				else
+					localNameHistogram[name] = old+1;
+				end
+			end
 			
 			if ( alive ) then
 				old = aliveNameHistogram[name];
@@ -329,7 +343,7 @@ function computeHeritage()
 			end
 			
 			if ( alive and isLocal ) then
-  				aliveNames[name] = 1;
+				aliveNames[name] = 1;
 				old = localAliveNameHistogram[name];
 				if ( old == nil ) then
 					localAliveNameHistogram[name] = 1;
@@ -381,6 +395,19 @@ function computeHeritage()
 			do return end;
 		end
 		
+		if ( dwarf.name.words[1] == -1 ) then
+			resolveConflict(dwarf);
+			do return end;
+		end
+		
+		if ( dwarf.name.words[0] == -1 ) then
+			dwarf.name.words[0] = dwarf.name.words[1];
+			dwarf.name.words[1] = -1;
+			resolveConflict(dwarf);
+			local temp = dwarf.name.words[0];
+			dwarf.name.words[0] = dwarf.name.words[1];
+			dwarf.name.words[1] = temp;
+		end
 	end
 	
 	function sortName(dwarf)
@@ -523,11 +550,13 @@ function computeHeritage()
 			for j=2,4 do
 				local temp1 = nameTable[j-1];
 				local temp2 = nameTable[j  ];
-				if ( nameAge[temp2] < nameAge[temp1] ) then
+				local age1 = nameAge[temp1] or 1000000;
+				local age2 = nameAge[temp2] or 1000000;
+				if ( age2 < age1 ) then
 					nameTable[j-1] = temp2;
 					nameTable[j  ] = temp1;
-				elseif ( nameAge[temp2] == nameAge[temp1] ) then
-					--both equal: go by alphabetic?
+				elseif ( age2 == age1 ) then
+					--both equal: go by alphabetic
 					local str1 = df.global.world.raws.language.translations[0].words[temp1].value;
 					local str2 = df.global.world.raws.language.translations[0].words[temp2].value;
 					if ( str2 < str1 ) then
@@ -601,6 +630,48 @@ function computeHeritage()
 		dwarf.name.words[0] = newName0;
 		dwarf.name.words[1] = newName1;
 		
+		if ( nameScheme == 'motherName' ) then
+			if ( parent1 == nil ) then
+				parent1 = parent2;
+			end
+			if ( parent1 == nil ) then
+				do return end;
+			end
+			dwarf.name.words[0] = parent1.name.words[0];
+			dwarf.name.words[1] = parent1.name.words[1];
+			--do return end;
+		elseif ( nameScheme == 'fatherName' ) then
+			if ( parent2 == nil ) then
+				parent2 = parent1;
+			end
+			if ( parent2 == nil ) then
+				do return end;
+			end
+			dwarf.name.words[0] = parent2.name.words[0];
+			dwarf.name.words[1] = parent2.name.words[1];
+		elseif ( nameScheme == 'eldestParent' ) then
+			local olderParent;
+			if ( parent1 == nil and parent2 ~= nil ) then
+				olderParent = parent2;
+			elseif ( parent2 == nil and parent1 ~= nil ) then
+				olderParent = parent1;
+			else
+				if ( parent1 == nil or parent2 == nil ) then
+					dfhack.error('WTF?');
+				end
+				if ( age[parent1] == age[parent2] ) then
+					print('What a coincidence! Parents with the exact same age.');
+					olderParent = parent1;
+				elseif ( age[parent1] < age[parent2] ) then
+					olderParent = parent1;
+				else
+					olderParent = parent2;
+				end
+			end
+			dwarf.name.words[0] = olderParent.name.words[0];
+			dwarf.name.words[1] = olderParent.name.words[1];
+		end
+		
 		--resolve conflicts
 		--choose the same new name in the event of a conflict
 		local seed;
@@ -617,10 +688,12 @@ function computeHeritage()
 		--print("seed = " .. seed);
 		math.randomseed(seed);
 		
-		detectAndResolveConflicts(dwarf);
-		sortName(dwarf);
-		--only handleNewName when their name is finalized!
-		handleNewName(dwarf);
+		if ( nameScheme == 'default' ) then
+			detectAndResolveConflicts(dwarf);
+			sortName(dwarf);
+			--only handleNewName when their name is finalized!
+			handleNewName(dwarf);
+		end
 		
 		local newNameString = dfhack.TranslateName(dwarf.name);
 		
@@ -695,10 +768,10 @@ function computeHeritage()
 	end
 	
 	--print out the age of each name
-	function printNameAges()
+	function printNameInformation()
 		local count = 0;
 		local newList = {};
-		for name,_ in pairs(aliveNames) do
+		for name,_ in pairs(allNames) do
 			newList[count] = name;
 			count = count+1;
 		end
@@ -709,43 +782,242 @@ function computeHeritage()
 			
 			local name1 = newList[a];
 			local name2 = newList[b];
-			local age1 = nameAge[name1];
-			local age2 = nameAge[name2];
+			local age1 = nil;
+			local age2 = nil;
 			
-			age1 = localAliveNameHistogram[name1];
-			age2 = localAliveNameHistogram[name2];
+			if ( sortOutputBy == 'alphabetic' ) then
+				--TODO: ------------------------------------------------------------------------------------this line for correct translations
+				local str1 = df.global.world.raws.language.translations[0].words[name1].value;
+				local str2 = df.global.world.raws.language.translations[0].words[name2].value;
+				if ( doReverseOutputOrder ) then
+					do return str2 < str1 end;
+				else
+					do return str1 < str2 end;
+				end
+			elseif ( sortOutputBy == 'aliveUses' ) then
+				age1 = aliveNameHistogram[name1];
+				age2 = aliveNameHistogram[name2];
+			elseif ( sortOutputBy == 'uses' ) then
+				age1 = nameHistogram[name1];
+				age2 = nameHistogram[name2];
+			elseif ( sortOutputBy == 'fortUses' ) then
+				age1 = localNameHistogram[name1];
+				age2 = localNameHistogram[name2];
+			elseif ( sortOutputBy == 'fortAliveUses' ) then
+				age1 = localAliveNameHistogram[name1];
+				age2 = localAliveNameHistogram[name2];
+			elseif ( sortOutputBy == 'nameAge' ) then
+				age1 = nameAge[name1];
+				age2 = nameAge[name2];
+			elseif ( sortOutputBy == 'leaderAge' ) then
+				if ( nameLeader[name1] == nil ) then
+					age1 = nil;
+				else
+					age1 = age[nameLeader[name1]];
+				end
+				if ( nameLeader[name2] == nil ) then
+					age2 = nil;
+				else
+					age2 = age[nameLeader[name2]];
+				end
+			elseif ( sortOutputBy == 'fortLeaderAge' ) then
+				if ( localNameLeader[name1] == nil ) then
+					age1 = nil;
+				else
+					age1 = age[localNameLeader[name1]];
+				end
+				if ( localNameLeader[name2] == nil ) then
+					age2 = nil;
+				else
+					age2 = age[localNameLeader[name2]];
+				end
+			elseif ( sortOutputBy == 'fortNameAge' ) then
+				if ( localNameFounder[name1] == nil ) then
+					age1 = nil;
+				else
+					age1 = age[localNameFounder[name1]];
+				end
+				if ( localNameFounder[name2] == nil ) then
+					age2 = nil;
+				else
+					age2 = age[localNameFounder[name2]];
+				end
+			elseif ( sortOutputBy == 'influence') then
+				if ( nameLeader[name1] == nil ) then
+					age1 = nil;
+				else
+					age1 = influence[nameLeader[name1]];
+				end
+				if ( nameLeader[name2] == nil ) then
+					age2 = nil;
+				else
+					age2 = influence[nameLeader[name2]];
+				end
+			else
+				dfhack.error('Invalid sortOutputBy: "' .. sortOutputBy .. '"');
+			end
 			
-			--age1 = influence[nameLeader[name1]];
-			--age2 = influence[nameLeader[name2]];
 			if ( age1 == nil and age2 == nil ) then
 				do return false end;
 			end
-			if ( age2 == nil ) then
-				do return false end;
+			
+			if ( doReverseOutputOrder ) then
+				if ( age2 == nil ) then
+					do return true end;
+				end
+				if ( age1 == nil ) then
+					do return false end;
+				end
+			else
+				--not applicables first
+				if ( age2 == nil ) then
+					do return false end;
+				end
+				if ( age1 == nil ) then
+					do return true end;
+				end
 			end
-			if ( age1 == nil ) then
-				do return true end;
+			
+			if ( doReverseOutputOrder ) then
+				local temp = age1;
+				age1 = age2;
+				age2 = temp;
 			end
+			
 			if (age1 < age2) then
 				do return true end;
 			elseif (age1 == age2) then
-				local str1 = df.global.world.raws.language.translations[0].words[name1].value;
-				local str2 = df.global.world.raws.language.translations[0].words[name2].value;
-				do return str1 < str2 end;
+				--TODO: other orderings?
+				--mergesort is stable, so this will be consistent with the current ordering
+				do return false end;
+			else
+				--age1 > age2
+				do return false end;
 			end
-			return false;
+			dfhack.error("This should not be reachable.");
 		end
 		sort(newList, ageLessThan, 0, count);
 		
-		print("Names that are present in this fort (least frequently-used names listed first): ");
+		if ( outputType == 'printAllNames' ) then
+			print("Printing all names:");
+		elseif (outputType == 'printFortNames' ) then
+			print("Printing all names represented in this fort at some point in the past or present:");
+		elseif (outputType == 'printAllAliveNames') then
+			print("Printing all names with at least one living dwarf:");
+		elseif (outputType == 'printFortAliveNames') then
+			print("Printing all names with at least one living dwarf in the current fort:");
+		else
+			dfhack.error('Invalid output type: "' .. outputType .. '"');
+		end
+		local sortOutputByStr = nil;
+		if ( sortOutputBy == 'alphabetic' ) then
+			sortOutputByStr = 'alphabetically';
+			if ( doReverseOutputOrder ) then
+				sortOutputByStr = sortOutputByStr .. ', from Z to A';
+			else
+				sortOutputByStr = sortOutputByStr .. ', from A to Z';
+			end
+		elseif ( sortOutputBy == 'aliveUses' ) then
+			sortOutputByStr = 'by number of living dwarves with the name';
+			if ( doReverseOutputOrder ) then
+				sortOutputByStr = sortOutputByStr .. ', most common names last';
+			else
+				sortOutputByStr = sortOutputByStr .. ', most common names first';
+			end
+		elseif ( sortOutputBy == 'uses' ) then
+			sortOutputByStr = 'by number of dwarves living or dead who have had the name';
+			if ( doReverseOutputOrder ) then
+				sortOutputByStr = sortOutputByStr .. ', most common names last';
+			else
+				sortOutputByStr = sortOutputByStr .. ', most common names first';
+			end
+		elseif ( sortOutputBy == 'fortUses' ) then
+			sortOutputByStr = 'by number of dwarves who have lived in the current fort who have the name, living or dead';
+			if ( doReverseOutputOrder ) then
+				sortOutputByStr = sortOutputByStr .. ', most common names last';
+			else
+				sortOutputByStr = sortOutputByStr .. ', most common names first';
+			end
+		elseif ( sortOutputBy == 'fortAliveUses' ) then
+			sortOutputByStr = 'by number of living dwarves in the current fort who have the name';
+			if ( doReverseOutputOrder ) then
+				sortOutputByStr = sortOutputByStr .. ', most common names last';
+			else
+				sortOutputByStr = sortOutputByStr .. ', most common names first';
+			end
+		elseif ( sortOutputBy == 'nameAge' ) then
+			sortOutputByStr = 'by time since the first dwarf to have the name';
+			if ( doReverseOutputOrder ) then
+				sortOutputByStr = sortOutputByStr .. ', oldest names last';
+			else
+				sortOutputByStr = sortOutputByStr .. ', oldest names first';
+			end
+		elseif ( sortOutputBy == 'leaderAge' ) then
+			sortOutputByStr = 'by age of the eldest dwarf with the name';
+			if ( doReverseOutputOrder ) then
+				sortOutputByStr = sortOutputByStr .. ', oldest last';
+			else
+				sortOutputByStr = sortOutputByStr .. ', oldest first';
+			end
+		elseif ( sortOutputBy == 'fortLeaderAge' ) then
+			sortOutputByStr = 'by age of the eldest dwarf in the current fort with the name';
+			if ( doReverseOutputOrder ) then
+				sortOutputByStr = sortOutputByStr .. ', oldest last';
+			else
+				sortOutputByStr = sortOutputByStr .. ', oldest first';
+			end
+		elseif ( sortOutputBy == 'fortNameAge' ) then
+			sortOutputByStr = 'by time since the birth of the first dwarf who lived in the current fort with the name';
+			if ( doReverseOutputOrder ) then
+				sortOutputByStr = sortOutputByStr .. ', oldest last';
+			else
+				sortOutputByStr = sortOutputByStr .. ', oldest first';
+			end
+		--[[elseif ( sortOutputBy == '' ) then
+			sortOutputByStr = '';
+			if ( doReverseOutputOrder ) then
+				sortOutputByStr = sortOutputByStr .. '';
+			else
+				sortOutputByStr = sortOutputByStr .. '';
+			end--]]
+		elseif ( sortOutputBy == 'influence') then
+			sortOutputByStr = 'by level of influence';
+			if ( doReverseOutputOrder ) then
+				sortOutputByStr = sortOutputByStr .. ', most influential last';
+			else
+				sortOutputByStr = sortOutputByStr .. ', most influential first';
+			end
+		else
+			dfhack.error('Invalid sortOutputBy: "' .. sortOutputBy .. '"');
+		end
+		if ( sortOutputByStr == nil ) then
+			dfhack.error('sortOutputByStr is nil');
+		end
+		print("Sorting " .. sortOutputByStr);
 		function helper(i)
 			local name = newList[i];
 			--print(name);
 			if ( name == -1 ) then
 				return;
 			end
-			if ( aliveNameHistogram[name] == nil ) then
-				return;
+			
+			if ( outputType == 'printAllNames' ) then
+				--print everyone
+			elseif (outputType == 'printFortNames') then
+				--print only fort
+				if ( localNameFounder[name] == nil ) then
+					return;
+				end
+			elseif (outputType == 'printAllAliveNames') then
+				if ( nameLeader[name] == nil ) then
+					return;
+				end
+			elseif (outputType == 'printFortAliveNames') then
+				if ( localNameLeader[name] == nil ) then
+					return;
+				end
+			else
+				dfhack.error('WTF?');
 			end
 			
 			local leader = nameLeader[name];
@@ -765,7 +1037,7 @@ function computeHeritage()
 				nameAge[name]/ticksPerYear,
 				dfhack.TranslateName(nameFounder[name].name)));
 			if ( nameLeader[name] ~= nil ) then
-				if ( false ) then
+				if ( true ) then
 					print(string.format("        led by %s, born %-4.2f, who has influence level %d",
 						dfhack.TranslateName(nameLeader[name].name),
 						age[nameLeader[name]]/ticksPerYear,
@@ -787,8 +1059,131 @@ function computeHeritage()
 			helper(i);
 		end
 	end
-	printNameAges();
+	
+	if ( outputType ~= 'none' ) then
+		printNameInformation();
+	end
 end
 
 --computeHeritage();
-dfhack.with_suspend(computeHeritage);
+--dfhack.with_suspend(computeHeritage);
+
+
+local usage =
+	function()
+		print('Usage: heritage [-nameScheme {schemeNameHere}]'
+			..'\n    [-outputType {outputTypeHere}]'
+			..'\n    [-sortBy {sortTypeHere}]'
+			..'\n    [-reverse]'
+			..'\nnameScheme, outputType, sortBy, and reverse are optional and may be used in any combination and in any order. Do not use any braces in the arguments. The default nameScheme is \'default\', the default outputType is printLocalNames, the default sortBy is fortAliveUses.'
+				..'For full information on what does what, call heritage -h. For even fuller information, do this and also read the readme.'
+			..'\nExamples:'
+				..'\n    heritage -nameScheme default -outputType printFortAliveNames -sortOutputBy nameAge'
+					..'\n        Choose last names based on the default scheme, output statistics on all names of living dwarves in the current fort, outputting the information on the oldest names first.'
+				..'\n    heritage -nameScheme eldestParent -outputType printAllAliveNames -sortOutputBy aliveUses -reverse'
+					..'\n        Dwarves inherit the last name of the older of their parents, output statistics on all names of living dwarves in the world, outputting the information on the rarest names first.'
+			);
+	end
+
+--nameScheme can be default, eldestParent, motherName, fatherName
+--[[
+--TODO
+	optional copy output to file
+	family tree
+	conflict handling
+	all races option
+	correct translation of names
+	multisort
+	full last name information
+	one name from each parent (statically)
+	dry run option
+	influence complications
+	worry about visiting nonlocal dwarves
+	worry about twin age
+	sort output by english translation
+--]]
+
+local arguments = {...};
+local nameScheme = 'unknown';
+local outputType = 'printLocalNames';
+local sortBy = 'fortAliveUses';
+local reverse = false;
+local prev = nil;
+for i,v in pairs(arguments) do
+	if ( prev == nil ) then
+		if ( v == '-nameScheme' or v == '-outputType' or v == '-sortOutputBy' ) then
+			prev = v;
+		elseif ( v == '-reverse' ) then
+			reverse = true;
+		elseif ( v == '-h' or v == '-help' or v == '--help' ) then
+			usage();
+			print('-nameScheme');
+			print('    default: get two names from parents names, which names you get depend on your birth order.');
+			print('    eldestParent: your last name is the last name of your eldest parent.');
+			print('    fatherName: your last name is the last name of your father.');
+			print('    motherName: your last name is the last name of your mother.');
+			print('-outputType');
+			print('    none: do not print name statistics.'); --TODO: actual no output
+			print('    printAllNames: print statistics about all names that any dwarf has had');
+			print('    printFortNames: print statistics about all names that any dwarf in your fort has had');
+			print('    printAllAliveNames: print statistics about all names that at least one living dwarf in the world has.');
+			print('    printFortAliveNames: print statistics about all names of living dwarves in your fort.');
+			print('-sortOutputBy');
+			print('    alphabetic: sort printed names alphabetically.');
+			print('    aliveUses: sort printed names by how many living dwarves have them.');
+			print('    uses: sort printed names by how many dwarves have had them.');
+			print('    fortUses: sort printed names by how many dwarves in your fort have had them.');
+			print('    fortAliveUses: sort printed names by how many living dwarves in your fort have them.');
+			print('    nameAge: sort printed names by time since the birth of the first dwarf to possess it.');
+			print('    leaderAge: sort printed names by the age of the eldest living dwarf with the name.');
+			print('    fortLeaderAge: sort printed names by the age of the eldest living dwarf in the fort with the name.');
+			print('    fortNameAge: sort printed names by the time since the birth of the first dwarf in the fort with the name.');
+			print('    influence: sort printed names by influence.');
+			print('-reverse: reverse the specified sort order.');
+			do return end;
+		else
+			print('Incorrect usage: "' .. v .. '"');
+			usage();
+			do return end;
+		end
+	elseif ( prev == '-nameScheme' ) then
+		if ( v == 'default' or v == 'eldestParent' or v == 'motherName' or v == 'fatherName' ) then
+			nameScheme = v;
+		else
+			print('Incorrect usage: "' .. v .. '"');
+			usage();
+			do return end;
+		end
+		prev = nil;
+	elseif ( prev == '-outputType' ) then
+		if ( v == 'none' or v == 'printAllNames' or v == 'printFortNames' or v == 'printAllAliveNames' or v == 'printFortAliveNames' ) then
+			outputType = v;
+		else
+			print('Incorrect usage: "' .. v .. '"');
+			usage();
+			do return end;
+		end
+		prev = nil;
+	elseif ( prev == '-sortOutputBy' ) then
+		if ( v == 'alphabetic' or v == 'aliveUses' or v == 'uses' or v == 'fortUses' or v == 'fortAliveUses' or v == 'nameAge' or v == 'leaderAge' or v == 'fortLeaderAge' or v == 'fortNameAge' or v == 'influence' ) then
+			sortBy = v;
+		else
+			print('Incorrect usage: "' .. v .. '"');
+			usage();
+			do return end;
+		end
+		prev = nil;
+	else
+		print('Incorrect usage: "' .. v .. '"');
+		usage();
+		do return end;
+	end
+end
+
+if ( prev ~= nil ) then
+	print("Incorrect usage: you must specify a parameter.");
+	usage();
+	do return end;
+end
+
+dfhack.with_suspend(computeHeritage, nameScheme, outputType, sortBy, reverse);

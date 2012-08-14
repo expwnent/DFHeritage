@@ -33,6 +33,8 @@ Here's the rules of the new system, in no particular order:
 ============================================================================
 Possible improvements: I've considered giving royalty a special extra last name, like what happens with dwarves that kill a lot of enemies. This extra last name would always be passed on unless there's a conflict, so you can tell which dwarves are descended from a monarch, and if so, which ones. The only problem is I don't know how to determine who was a civilization leader and when in lua. Advice on this is very welcome. Doing the rest of it shouldn't be that hard.
 
+Instead of choosing random names for dwarves with name conflicts, go back and search through ancestor names.
+
 ============================================================================
 Troubleshooting:
 
@@ -60,7 +62,7 @@ Installation:
 
 Requires DFHack. Was written for DFHack 0.34.11 r1. Install that or a later version first.
 
-The script itself is probably horribly illegible, but it should work. Just put it in hack\scripts\heritage.lua and run it with "lua hack/scripts/heritage.lua".
+The script itself is probably horribly illegible, but it should work. Just put it in hack\scripts\heritage.lua and run it with "heritage" from the DFHack console.
 
 Load a save in dwarf mode first. Legends mode won't crash, but it also won't actually change anything because DF doesn't change save files in legends mode. It will run in adventure mode, but I think it doesn't actually do anything. I wouldn't try it.
 
