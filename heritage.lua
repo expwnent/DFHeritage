@@ -1021,7 +1021,7 @@ function computeHeritage(nameScheme, outputType, sortOutputBy, doReverseOutputOr
 			end
 			
 			local leader = nameLeader[name];
-			if ( leader ~= getBoss(leader) ) then
+			if ( (leader == nil) or (leader ~= getBoss(leader)) ) then
 				return;
 			end
 			
@@ -1105,7 +1105,7 @@ local usage =
 
 local arguments = {...};
 local nameScheme = 'unknown';
-local outputType = 'printLocalNames';
+local outputType = 'printFortNames';
 local sortBy = 'fortAliveUses';
 local reverse = false;
 local prev = nil;
